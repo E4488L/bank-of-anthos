@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: accounts-db-config
-  labels:
-    app: accounts-db
-data:
-  POSTGRES_DB: accounts-db
-  POSTGRES_USER: accounts-admin
-  POSTGRES_PASSWORD: accounts-pwd
-  ACCOUNTS_DB_URI: postgresql://accounts-admin:accounts-pwd@accounts-db:5432/accounts-db
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+commonLabels:
+  google-identity: fwi
+patches:
+- path: add-fwi.yaml
+  target:
+    kind: Deployment

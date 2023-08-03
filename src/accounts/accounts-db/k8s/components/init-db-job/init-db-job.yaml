@@ -40,7 +40,11 @@ data:
           sleep 10s
         else
           echo "'${TARGET}' Process Finished, Stopping '${PROCESS}'"
-          killall ${PROCESS}
+          if [[ ${PROCESS} == "cloud-sql-proxy" ]]; then
+            wget --post-data '' http://127.0.0.1:9091/quitquitquit
+          else
+            killall ${PROCESS}
+          fi
           exit 0
         fi
     done
@@ -258,11 +262,11 @@ spec:
         sidecar.istio.io/inject: "false"
     spec:
       shareProcessNamespace: true # Important to stop all processes
-      serviceAccountName: bank-of-anthos
+      serviceAccountName: default
       containers:
       - name: sidecar-controller
         image: bash@sha256:1ea30d9b65797fbae4787f6188796e7189371019031958a167423d347d32eada
-        command: ['bash', '-c', '. /scripts/wait-to-complete-sidecar.sh "initialize-database.sh" "cloud_sql_proxy"']
+        command: ['bash', '-c', '. /scripts/wait-to-complete-sidecar.sh "initialize-database.sh" "cloud-sql-proxy"']
         volumeMounts:
         - name: scripts
           mountPath: "/scripts"
@@ -279,55 +283,25 @@ spec:
           mountPath: "/scripts"
           readOnly: true
         env:
-        - name: PGUSER
-          value: admin
-        - name: PGPASSWORD
-          value: admin
-        # /start: Required for testing data
-        - name: LOCAL_ROUTING_NUM
-          valueFrom:
-            configMapKeyRef:
-              name: environment-config
-              key: LOCAL_ROUTING_NUM
-        - name: USE_DEMO_DATA
-          valueFrom:
-            configMapKeyRef:
-              name: demo-data-config
-              key: USE_DEMO_DATA
-        - name: POSTGRES_DB
-          value: "accounts-db"
         - name: PGHOSTADDR
           value: "127.0.0.1"
-        - name: POSTGRES_USER
-          value: admin
-        - name: POSTGRES_PASSWORD
-          value: admin
-      # /end: Required for testing data
-      # CloudSQL Proxy
-      - name: cloudsql-proxy
-        resources:
-          limits:
-            cpu: "200m"
-            memory: "100Mi"
-        image: gcr.io/cloudsql-docker/gce-proxy:1.33.9-buster@sha256:69af2eba0646f0bded0d655ea7da3d67423d974fe67c632f8a48d234b402cd61
-        env:
-        - name: CONNECTION_NAME
+        - name: PGPASSWORD
           valueFrom:
             configMapKeyRef:
-              name: cloud-sql-admin
-              key: connectionName
-        command: [
-          "timeout",
-          "--preserve-status",
-          "-s",
-          "SIGTERM",
-          "30s",
-          "/cloud_sql_proxy",
-          "-instances=$(CONNECTION_NAME)=tcp:5432",
-          "-term_timeout=300s"
-        ]
-        securityContext:
-          runAsNonRoot: true
+              key: POSTGRES_PASSWORD
+              name: accounts-db-config
+        - name: PGUSER
+          valueFrom:
+            configMapKeyRef:
+              key: POSTGRES_USER
+              name: accounts-db-config
+        envFrom:
+        - configMapRef:
+            name: accounts-db-config
+        - configMapRef:
+            name: demo-data-config
+        - configMapRef:
+            name: environment-config
       volumes:
       - name: scripts
         configMap:

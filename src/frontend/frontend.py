@@ -720,6 +720,12 @@ def create_app():
     # Set up logging
     app.logger.handlers = logging.getLogger('gunicorn.error').handlers
     app.logger.setLevel(logging.getLogger('gunicorn.error').level)
+
+    if 'GOOGLE_APPLICATION_CREDENTIALS' in os.environ:
+        with open(os.environ['GOOGLE_APPLICATION_CREDENTIALS'], 'r') as cred_file:
+            credentials = json.load(cred_file)
+        os.environ["GOOGLE_CLOUD_PROJECT"] = credentials['project_id']
+
     app.logger.info('Starting frontend service.')
 
     # Set up tracing and export spans to Cloud Trace.
